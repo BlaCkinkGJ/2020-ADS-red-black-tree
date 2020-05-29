@@ -77,6 +77,28 @@ static int rb_tree_get_bh(struct rb_tree *tree, struct rb_node *root)
         return left_bh + (rb_node_is_black(root) ? 1 : 0);
 }
 
+static void rb_tree_left_rotate(struct rb_tree *tree, struct rb_node *node)
+{
+        struct rb_node *right = node->right; /**< set right node */
+
+        node->right = right->left; /**< move subtree */
+        if (right->left != tree->leaf) {
+                node->left->parent = right;
+        }
+        right->parent = node->parent; /**< change parents */
+
+        if (node->parent == tree->leaf) {
+                tree->root = right;
+        } else if (node == node->parent->left) {
+                node->parent->left = right;
+        } else {
+                node->parent->right = right;
+        }
+
+        right->left = node;
+        node->parent = right;
+}
+
 /**
  * @brief Does deallocation of the red-black tree subtree
  * 

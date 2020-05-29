@@ -57,6 +57,9 @@ struct rb_tree {
         struct rb_node *leaf; /**< same as Nil in CLRS books */
 };
 
+struct rb_tree *rb_tree_alloc();
+void rb_tree_dealloc(struct rb_tree *tree);
+
 /**
  * @brief red-black tree color test
  * 
