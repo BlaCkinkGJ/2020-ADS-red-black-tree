@@ -14,6 +14,8 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include <errno.h>
 
 #ifndef key_t
 #warning "already key_t is defined"
@@ -54,7 +56,7 @@ struct rb_node {
  */
 struct rb_tree {
         struct rb_node *root;
-        struct rb_node *leaf; /**< same as Nil in CLRS books */
+        struct rb_node *nil; /**< same as Nil in CLRS books */
 };
 
 struct rb_tree *rb_tree_alloc();
@@ -73,29 +75,29 @@ static inline bool rb_node_is_black(struct rb_node *node)
 }
 
 /**
- * @brief Node check if the node is equal to tree->leaf
+ * @brief Node check if the node is equal to tree->nil
  * 
  * @param tree red-black tree whole
- * @param node leaf test target node
- * @return true node is leaf
- * @return false node is not leaf
+ * @param node nil test target node
+ * @return true node is nil
+ * @return false node is not nil
  */
 static inline bool rb_node_is_leaf(struct rb_tree *tree, struct rb_node *node)
 {
-        return tree->leaf == node;
+        return tree->nil == node;
 }
 
 /**
- * @brief set specific node to leaf
+ * @brief set specific node to nil
  * 
- * @param leaf the node which wants to make a leaf.
+ * @param nil the node which wants to make a nil.
  */
-static inline void rb_set_nil_leaf_node(struct rb_node *leaf)
+static inline void rb_set_nil_leaf_node(struct rb_node *nil)
 {
-        leaf->color = RB_NODE_COLOR_BLACK;
-        leaf->parent = leaf->left = leaf->right = NULL;
-        leaf->data = NULL;
-        leaf->key = 0;
+        nil->color = RB_NODE_COLOR_BLACK;
+        nil->parent = nil->left = nil->right = NULL;
+        nil->data = NULL;
+        nil->key = 0;
 }
 
 #endif

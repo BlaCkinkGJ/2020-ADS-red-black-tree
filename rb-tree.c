@@ -26,19 +26,22 @@ struct rb_tree *rb_tree_alloc()
 
         tree->root = NULL;
 
-        tree->leaf = (struct rb_node *)malloc(sizeof(struct rb_node));
-        if (!tree->leaf) {
+        tree->nil = (struct rb_node *)malloc(sizeof(struct rb_node));
+        if (!tree->nil) {
                 pr_info("Memory shortage detected! Allocation failed...");
                 goto exception;
         }
-        rb_set_nil_leaf_node(tree->leaf);
+        rb_set_nil_leaf_node(tree->nil);
+
+        tree->root = tree->nil;
 
         return tree;
 exception:
-        if (tree->leaf) {
-                free(tree->leaf);
-                tree->leaf = NULL;
+        if (tree->nil) {
+                free(tree->nil);
+                tree->nil = NULL;
         }
+
         if (tree) {
                 free(tree);
         }
@@ -95,12 +98,12 @@ static void rb_tree_left_rotate(struct rb_tree *tree, struct rb_node *x)
         y = x->right; /**< set right node */
 
         x->right = y->left; /**< move subtree */
-        if (y->left != tree->leaf) {
+        if (y->left != tree->nil) {
                 y->left->parent = x;
         }
         y->parent = x->parent; /**< change parents */
 
-        if (x->parent == tree->leaf) {
+        if (x->parent == tree->nil) {
                 tree->root = y;
         } else if (x == x->parent->left) {
                 x->parent->left = y;
@@ -116,21 +119,102 @@ static void rb_tree_left_rotate(struct rb_tree *tree, struct rb_node *x)
  * @brief Red-black tree left rotation
  *      (y)              (x)
  *     ／  ＼           ／  ＼
- *   (x)    γ  ==>     α     (y)
- *  ／  ＼                   ／  ＼
- * α     β                  β     γ
+ *   (x)     γ  ==>    α     (y)
+ *  ／  ＼                  ／  ＼
+ * α     β                 β     γ
  * 
  * @param tree red-black tree structure
  * @param x subtree's root node
  */
-static void rb_tree_right_rotate(struct rb_tree *tree, struct rb_node *node)
+static void rb_tree_right_rotate(struct rb_tree *tree, struct rb_node *y)
 {
-        struct rb_node *left = node->left;
+        struct rb_node *x = NULL;
 
-        node->left = left->right;
-        if (left->right != tree->leaf) {
-                node->right->parent = left;
+        x = y->left; /**< set left node */
+
+        y->left = x->right; /**< move subtree */
+        if (x->right != tree->nil) {
+                x->right->parent = x;
         }
+        x->parent = y->parent; /**< change parents */
+
+        if (y->parent == tree->nil) {
+                tree->root = x;
+        } else if (y == y->parent->right) {
+                y->parent->right = y;
+        } else {
+                y->parent->left = y;
+        }
+
+        x->right = y;
+        y->parent = x;
+}
+
+/**
+ * @brief recolor nodes and perform rotations
+ * 
+ * @param tree red-black tree structure
+ * @param z new node which insert into red-black tree
+ * @return int successfully insert status (0: success, else: fail)
+ */
+static int rb_insert_fixup(struct rb_tree *tree, struct rb_node *z)
+{
+        struct rb_node *y = NULL;
+
+        while (z->parent->color == RB_NODE_COLOR_RED) {
+                if (z->parent == z->parent->parent->left) {
+                        y = z->parent->parent->right;
+                        if (y->color == RB_NODE_COLOR_RED) {
+                                z->parent->color = RB_NODE_COLOR_BLACK;
+                                y->color = RB_NODE_COLOR_BLACK;
+                                z->parent->parent->color = RB_NODE_COLOR_RED;
+                        }
+                }
+        }
+}
+
+/**
+ * @brief insert node to red-black tree
+ * 
+ * @param tree red-black tree structure
+ * @param z new node which insert into red-black tree
+ * @return int successfully insert status (0: success, else: fail)
+ */
+int rb_tree_insert(struct rb_tree *tree, struct rb_node *z)
+{
+        struct rb_node *y = NULL;
+        struct rb_node *x = NULL;
+
+        if (z == NULL) {
+                pr_info("z must be not null");
+                return -EINVAL;
+        }
+
+        y = tree->nil;
+        x = tree->root;
+        while (x != tree->nil) {
+                y = x;
+                if (z->key < x->key) {
+                        x = x->left;
+                } else {
+                        x = x->right;
+                }
+        } /**< traverse valid insert location */
+
+        z->parent = y;
+        if (y == tree->nil) { /**< set y state */
+                tree->root = z;
+        } else if (z->key < y->key) {
+                y->left = z;
+        } else {
+                y->right = z;
+        }
+
+        z->left = tree->nil;
+        z->right = tree->nil;
+        z->color = RB_NODE_COLOR_RED;
+
+        return 0;
 }
 
 /**
@@ -163,8 +247,8 @@ void rb_tree_dealloc(struct rb_tree *tree)
         __rb_tree_dealloc(tree, tree->root);
         tree->root = NULL;
 
-        free(tree->leaf);
-        tree->leaf = NULL;
+        free(tree->nil);
+        tree->nil = NULL;
 
         free(tree);
 }
