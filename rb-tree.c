@@ -77,26 +77,60 @@ static int rb_tree_get_bh(struct rb_tree *tree, struct rb_node *root)
         return left_bh + (rb_node_is_black(root) ? 1 : 0);
 }
 
-static void rb_tree_left_rotate(struct rb_tree *tree, struct rb_node *node)
+/**
+ * @brief Red-black tree left rotation
+ *     (x)                    (y)
+ *    ／  ＼                 ／  ＼
+ *   α     (y)     ==>     (x)    γ
+ *        ／  ＼          ／  ＼
+ *        β    γ         α     β
+ * 
+ * @param tree red-black tree structure
+ * @param x subtree's root node
+ */
+static void rb_tree_left_rotate(struct rb_tree *tree, struct rb_node *x)
 {
-        struct rb_node *right = node->right; /**< set right node */
+        struct rb_node *y = NULL;
 
-        node->right = right->left; /**< move subtree */
-        if (right->left != tree->leaf) {
-                node->left->parent = right;
+        y = x->right; /**< set right node */
+
+        x->right = y->left; /**< move subtree */
+        if (y->left != tree->leaf) {
+                y->left->parent = x;
         }
-        right->parent = node->parent; /**< change parents */
+        y->parent = x->parent; /**< change parents */
 
-        if (node->parent == tree->leaf) {
-                tree->root = right;
-        } else if (node == node->parent->left) {
-                node->parent->left = right;
+        if (x->parent == tree->leaf) {
+                tree->root = y;
+        } else if (x == x->parent->left) {
+                x->parent->left = y;
         } else {
-                node->parent->right = right;
+                x->parent->right = y;
         }
 
-        right->left = node;
-        node->parent = right;
+        y->left = x;
+        x->parent = y;
+}
+
+/**
+ * @brief Red-black tree left rotation
+ *      (y)              (x)
+ *     ／  ＼           ／  ＼
+ *   (x)    γ  ==>     α     (y)
+ *  ／  ＼                   ／  ＼
+ * α     β                  β     γ
+ * 
+ * @param tree red-black tree structure
+ * @param x subtree's root node
+ */
+static void rb_tree_right_rotate(struct rb_tree *tree, struct rb_node *node)
+{
+        struct rb_node *left = node->left;
+
+        node->left = left->right;
+        if (left->right != tree->leaf) {
+                node->right->parent = left;
+        }
 }
 
 /**
