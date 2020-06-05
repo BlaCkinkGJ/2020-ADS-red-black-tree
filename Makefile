@@ -52,6 +52,12 @@ TEST_SRC_FILES=$(UNITY_ROOT)/src/unity.c test/test-rb-tree.c $(SRC_FILES)
 INC_DIRS=-Isrc -I$(UNITY_ROOT)/src
 SYMBOLS=
 
+ifeq ($(OS),Windows_NT)
+	TEST_EXEC=./$(TARGET)
+else
+	TEST_EXEC=valgrind --leak-check=full -v --error-limit=no ./$(TARGET)
+endif
+
 all: clean main
 
 main: clean $(SRC_FILES) src/main.c
@@ -59,7 +65,7 @@ main: clean $(SRC_FILES) src/main.c
 
 test: clean $(TEST_SRC_FILES)
 	$(C_COMPILER) $(CFLAGS) $(INC_DIRS) $(SYMBOLS) $(TEST_SRC_FILES) -o $(TARGET)
-	- ./$(TARGET)
+	- $(TEST_EXEC)
 
 clean:
 	$(CLEANUP) $(TARGET) $(MAIN_TARGET)
