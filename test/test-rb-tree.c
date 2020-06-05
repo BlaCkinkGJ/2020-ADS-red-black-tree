@@ -4,17 +4,18 @@
 #include "rb-tree.h"
 #include "unity.h"
 
-#define INSERT_SIZE (1000000)
+#define INSERT_SIZE (100000)
+#define STR_BUF_SIZE (256)
 
 struct rb_tree *tree;
 key_t *key_arr;
-int *data_arr;
+char **data_arr;
 
 void setUp(void)
 {
         tree = rb_tree_alloc();
         key_arr = (key_t *)malloc(sizeof(key_t) * INSERT_SIZE);
-        data_arr = (int *)malloc(sizeof(int) * INSERT_SIZE);
+        data_arr = (char **)malloc(sizeof(char *) * INSERT_SIZE);
         TEST_ASSERT_NOT_NULL(tree);
 }
 
@@ -33,11 +34,10 @@ void test_rb_insert(void)
         }
 
         for (int i = 0; i < INSERT_SIZE; i++) {
-                struct rb_node *z = rb_node_alloc(key_arr[i]);
-                z->data = malloc(sizeof(int));
-                *((int *)z->data) = i;
-                data_arr[key_arr[i]] = i;
-                TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, z));
+                char *data = (char *)malloc(sizeof(char) * STR_BUF_SIZE);
+                sprintf(data, "%d", i);
+                data_arr[key_arr[i]] = data;
+                TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, key_arr[i], data));
         }
 }
 
@@ -48,7 +48,7 @@ void test_rb_valid_search(void)
                 struct rb_node *node = rb_tree_search(tree, key_arr[i]);
                 TEST_ASSERT_NOT_NULL(node);
                 TEST_ASSERT_EQUAL(key_arr[i], node->key);
-                TEST_ASSERT_EQUAL(data_arr[key_arr[i]], *((int *)node->data));
+                TEST_ASSERT_EQUAL_STRING(data_arr[key_arr[i]], node->data);
         }
 }
 

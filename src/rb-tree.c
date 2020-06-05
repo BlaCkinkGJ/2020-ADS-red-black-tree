@@ -50,38 +50,6 @@ exception:
 }
 
 /**
- * @brief Count the number of black colored nodes that belong to the subtree.
- * However, you must not count the color of the root itself.
- * 
- * @param tree red-black tree whole
- * @param root the root of the subtree
- * @return int the number of black colored nodes in the subtree.
- */
-static int rb_tree_get_bh(struct rb_tree *tree, struct rb_node *root)
-{
-        int left_bh, right_bh;
-        if (!root) {
-                return 1;
-        }
-
-        left_bh = rb_tree_get_bh(tree, root->left);
-        if (left_bh == 0) {
-                return left_bh;
-        }
-
-        right_bh = rb_tree_get_bh(tree, root->right);
-        if (right_bh == 0) {
-                return right_bh;
-        }
-
-        if (left_bh != right_bh) {
-                return 0;
-        }
-
-        return left_bh + (rb_node_is_black(root) ? 1 : 0);
-}
-
-/**
  * @brief Red-black tree left rotation
  *     (x)                    (y)
  *    ／  ＼                 ／  ＼
@@ -252,7 +220,7 @@ static void rb_insert_fixup(struct rb_tree *tree, struct rb_node *z)
  * @param z new node which insert into red-black tree
  * @return int successfully insert status (0: success, else: fail)
  */
-int rb_tree_insert(struct rb_tree *tree, struct rb_node *z)
+static int __rb_tree_insert(struct rb_tree *tree, struct rb_node *z)
 {
         struct rb_node *y = NULL;
         struct rb_node *x = NULL;
@@ -293,6 +261,48 @@ int rb_tree_insert(struct rb_tree *tree, struct rb_node *z)
         rb_insert_fixup(tree, z);
 
         return 0;
+}
+
+/**
+ * @brief Wrapping function of `__rb_tree_insert`
+ * 
+ * @param tree red-black tree structure
+ * @param key new node's key
+ * @param data new node's data
+ * @return int successfully insert status (0: success, else: fail)
+ */
+int rb_tree_insert(struct rb_tree *tree, const key_t key, void *data)
+{
+        struct rb_node *node = rb_node_alloc(key);
+        if (!node) {
+                pr_info("Allocate the node failed");
+                return -ENOMEM;
+        }
+
+        node->data = data;
+
+        return __rb_tree_insert(tree, node);
+}
+
+/**
+ * @brief Translant previous root to next root
+ * 
+ * @param tree red-black tree whole
+ * @param prev_root previous root node
+ * @param next_root next root node which want to transplant
+ */
+static void rb_tree_transplant(struct rb_tree *tree, struct rb_node *prev_root,
+                               struct rb_node *next_root)
+{
+        if (prev_root->parent == tree->nil) {
+                tree->root = next_root;
+        } else if (prev_root == prev_root->parent->left) {
+                prev_root->parent->left = next_root;
+        } else {
+                prev_root->parent->right = next_root;
+        }
+
+        next_root->parent = prev_root->parent;
 }
 
 /**

@@ -47,8 +47,10 @@ enum rb_node_color {
  */
 struct rb_node {
         enum rb_node_color color;
+
         key_t key;
         void *data; /**< must be allocated in HEAP location */
+
         struct rb_node *left, *right;
         struct rb_node *parent; /**< same as P in CLRS books */
 };
@@ -63,7 +65,7 @@ struct rb_tree {
 };
 
 struct rb_tree *rb_tree_alloc(void);
-int rb_tree_insert(struct rb_tree *tree, struct rb_node *z);
+int rb_tree_insert(struct rb_tree *tree, const key_t key, void *data);
 struct rb_node *rb_tree_search(struct rb_tree *tree, key_t key);
 void rb_tree_dealloc(struct rb_tree *tree);
 
