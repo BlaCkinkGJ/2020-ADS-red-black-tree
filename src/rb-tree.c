@@ -5,6 +5,7 @@
  * @version 0.1
  * @date 2020-05-29
  * 
+ * @ref Cormen, T. H., Leiserson, C. E., Rivest, R. L., & Stein, C. (2009). Introduction to algorithms. MIT press.
  * @copyright Copyright (c) 2020 BlaCkinkGJ
  * 
  */
@@ -16,7 +17,7 @@
  * 
  * @return struct rb_tree* allocated red-black tree
  */
-struct rb_tree *rb_tree_alloc()
+struct rb_tree *rb_tree_alloc(void)
 {
         struct rb_tree *tree = (struct rb_tree *)malloc(sizeof(struct rb_tree));
         if (!tree) {
@@ -134,47 +135,101 @@ static void rb_tree_right_rotate(struct rb_tree *tree, struct rb_node *y)
 
         y->left = x->right; /**< move subtree */
         if (x->right != tree->nil) {
-                x->right->parent = x;
+                x->right->parent = y;
         }
         x->parent = y->parent; /**< change parents */
 
         if (y->parent == tree->nil) {
                 tree->root = x;
         } else if (y == y->parent->right) {
-                y->parent->right = y;
+                y->parent->right = x;
         } else {
-                y->parent->left = y;
+                y->parent->left = x;
         }
 
         x->right = y;
         y->parent = x;
 }
 
+static struct rb_node *__rb_tree_search(struct rb_node *node, key_t key)
+{
+        struct rb_node *ret = NULL;
+        while (node) {
+                if (key == node->key) {
+                        ret = node;
+                        break;
+                }
+
+                if (key < node->key) {
+                        node = node->left;
+                } else {
+                        node = node->right;
+                }
+        }
+
+        return ret;
+}
+
+struct rb_node *rb_tree_search(struct rb_tree *tree, key_t key)
+{
+        return __rb_tree_search(tree->root, key);
+}
+
 /**
- * @brief recolor nodes and perform rotations
+ * @brief Re-color nodes and perform rotations
+ * @details
+ * case 1: z's uncle is y is red
+ * case 2: z's uncle is y is black and z is a right child
+ * case 3: z's uncle y is black and z is a left child
  * 
  * @param tree red-black tree structure
  * @param z new node which insert into red-black tree
- * @return int successfully insert status (0: success, else: fail)
  */
-static int rb_insert_fixup(struct rb_tree *tree, struct rb_node *z)
+static void rb_insert_fixup(struct rb_tree *tree, struct rb_node *z)
 {
         struct rb_node *y = NULL;
 
         while (z->parent->color == RB_NODE_COLOR_RED) {
                 if (z->parent == z->parent->parent->left) {
                         y = z->parent->parent->right;
+                        if (y->color == RB_NODE_COLOR_RED) { /**< case 1 */
+                                z->parent->color = RB_NODE_COLOR_BLACK;
+                                y->color = RB_NODE_COLOR_BLACK;
+                                z->parent->parent->color = RB_NODE_COLOR_RED;
+                                z = z->parent->parent;
+                        } else {
+                                if (z == z->parent->right) { /**< case 2 */
+                                        z = z->parent;
+                                        rb_tree_left_rotate(tree, z);
+                                }
+                                z->parent->color =
+                                        RB_NODE_COLOR_BLACK; /**< case 3 */
+                                z->parent->parent->color = RB_NODE_COLOR_RED;
+                                rb_tree_right_rotate(tree, z->parent->parent);
+                        }
+                } else { /**< only different part is left and right */
+                        y = z->parent->parent->left;
                         if (y->color == RB_NODE_COLOR_RED) {
                                 z->parent->color = RB_NODE_COLOR_BLACK;
                                 y->color = RB_NODE_COLOR_BLACK;
                                 z->parent->parent->color = RB_NODE_COLOR_RED;
+                                z = z->parent->parent;
+                        } else {
+                                if (z == z->parent->left) {
+                                        z = z->parent;
+                                        rb_tree_right_rotate(tree, z);
+                                }
+                                z->parent->color = RB_NODE_COLOR_BLACK;
+                                z->parent->parent->color = RB_NODE_COLOR_RED;
+                                rb_tree_left_rotate(tree, z->parent->parent);
                         }
                 }
         }
+        tree->root->color = RB_NODE_COLOR_BLACK;
 }
 
 /**
- * @brief insert node to red-black tree
+ * @brief Insert node to red-black tree
  * 
  * @param tree red-black tree structure
  * @param z new node which insert into red-black tree
@@ -193,6 +248,10 @@ int rb_tree_insert(struct rb_tree *tree, struct rb_node *z)
         y = tree->nil;
         x = tree->root;
         while (x != tree->nil) {
+                if (x->key == z->key) { /**< update key's data */
+                        rb_node_move(x, z);
+                        return 0;
+                }
                 y = x;
                 if (z->key < x->key) {
                         x = x->left;
@@ -214,6 +273,8 @@ int rb_tree_insert(struct rb_tree *tree, struct rb_node *z)
         z->right = tree->nil;
         z->color = RB_NODE_COLOR_RED;
 
+        rb_insert_fixup(tree, z);
+
         return 0;
 }
 
@@ -229,12 +290,12 @@ static void __rb_tree_dealloc(struct rb_tree *tree, struct rb_node *node)
                 return;
         }
 
-        dealloc_rb_node(tree, node->left);
+        __rb_tree_dealloc(tree, node->left);
         node->left = NULL;
-        dealloc_rb_node(tree, node->right);
+        __rb_tree_dealloc(tree, node->right);
         node->right = NULL;
 
-        free(node);
+        rb_node_dealloc(node);
 }
 
 /**
@@ -247,7 +308,7 @@ void rb_tree_dealloc(struct rb_tree *tree)
         __rb_tree_dealloc(tree, tree->root);
         tree->root = NULL;
 
-        free(tree->nil);
+        rb_node_dealloc(tree->nil);
         tree->nil = NULL;
 
         free(tree);
