@@ -43,21 +43,26 @@ CFLAGS += -Wundef
 CFLAGS += -Wold-style-definition
 #CFLAGS += -Wno-misleading-indentation
 
-TARGET_BASE1=test1
-TARGET_BASE2=test2
-TARGET1 = $(TARGET_BASE1)$(TARGET_EXTENSION)
-SRC_FILES1=$(UNITY_ROOT)/src/unity.c  src/rb-tree.c  test/test-rb-tree.c
+TEST_TARGET_BASE=test
+TARGET_BASE=run
+TARGET=$(TEST_TARGET_BASE)$(TARGET_EXTENSION)
+MAIN_TARGET=$(TARGET_BASE)$(TARGET_EXTENSION)
+SRC_FILES=src/rb-tree.c 
+TEST_SRC_FILES=$(UNITY_ROOT)/src/unity.c test/test-rb-tree.c $(SRC_FILES)
 INC_DIRS=-Isrc -I$(UNITY_ROOT)/src
 SYMBOLS=
 
-all: clean default
+all: clean main
 
-default: $(SRC_FILES1)
-	$(C_COMPILER) $(CFLAGS) $(INC_DIRS) $(SYMBOLS) $(SRC_FILES1) -o $(TARGET1)
-	- ./$(TARGET1)
+main: clean $(SRC_FILES) src/main.c
+	$(C_COMPILER) $(CFLAGS) $(INC_DIRS) $(SYMBOLS) $(TEST_SRC_FILES) -o $(MAIN_TARGET)
+
+test: clean $(TEST_SRC_FILES)
+	$(C_COMPILER) $(CFLAGS) $(INC_DIRS) $(SYMBOLS) $(TEST_SRC_FILES) -o $(TARGET)
+	- ./$(TARGET)
 
 clean:
-	$(CLEANUP) $(TARGET1) $(TARGET2)
+	$(CLEANUP) $(TARGET) $(MAIN_TARGET)
 
 ci: CFLAGS += -Werror
 ci: default
