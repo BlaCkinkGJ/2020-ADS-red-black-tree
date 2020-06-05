@@ -151,12 +151,22 @@ static void rb_tree_right_rotate(struct rb_tree *tree, struct rb_node *y)
         y->parent = x;
 }
 
-static struct rb_node *__rb_tree_search(struct rb_node *node, key_t key)
+/**
+ * @brief Search red-black tree's node which the same value of key.
+ * Based on binary search method
+ * 
+ * @param root red-black tree's root
+ * @param key the key which I want to search
+ * @return struct rb_node* if find success then return specific node pointer.
+ * but if find failed then return NULL pointer
+ * 
+ * @ref Horowitz, E., Sahni, S., & Anderson-Freed, S. (1992). Fundamentals of data structures in C. WH Freeman & Co..
+ */
+static struct rb_node *__rb_tree_search(struct rb_node *root, key_t key)
 {
-        struct rb_node *ret = NULL;
+        struct rb_node *node = root;
         while (node) {
-                if (key == node->key) {
-                        ret = node;
+                if (key == node->key) { /**< Find the specific values */
                         break;
                 }
 
@@ -167,9 +177,16 @@ static struct rb_node *__rb_tree_search(struct rb_node *node, key_t key)
                 }
         }
 
-        return ret;
+        return node;
 }
 
+/**
+ * @brief Wrapping function of `__rb_tree_search` function
+ * 
+ * @param tree 
+ * @param key 
+ * @return struct rb_node* 
+ */
 struct rb_node *rb_tree_search(struct rb_tree *tree, key_t key)
 {
         return __rb_tree_search(tree->root, key);

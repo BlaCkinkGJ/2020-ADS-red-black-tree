@@ -4,21 +4,26 @@
 #include "rb-tree.h"
 #include "unity.h"
 
-#define INSERT_SIZE (100000)
+#define INSERT_SIZE (1000000)
 
 struct rb_tree *tree;
-key_t key_arr[INSERT_SIZE];
-int data_arr[INSERT_SIZE];
+key_t *key_arr;
+int *data_arr;
 
 void setUp(void)
 {
         tree = rb_tree_alloc();
+        key_arr = (key_t *)malloc(sizeof(key_t) * INSERT_SIZE);
+        data_arr = (int *)malloc(sizeof(int) * INSERT_SIZE);
         TEST_ASSERT_NOT_NULL(tree);
 }
 
 void tearDown(void)
 {
         rb_tree_dealloc(tree);
+
+        free(key_arr);
+        free(data_arr);
 }
 
 void test_rb_insert(void)

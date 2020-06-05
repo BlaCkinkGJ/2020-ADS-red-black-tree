@@ -7,6 +7,8 @@
  * 
  * @copyright Copyright (c) 2020 BlaCkinkGJ
  * 
+ * @ref Cormen, T. H., Leiserson, C. E., Rivest, R. L., & Stein, C. (2009). Introduction to algorithms. MIT press.
+ * 
  */
 #ifndef RB_TREE_H_
 #define RB_TREE_H_
