@@ -127,7 +127,7 @@ static void rb_tree_right_rotate(struct rb_tree *tree, struct rb_node *y)
  * @param key the key which I want to search
  * @return struct rb_node* if find success then return specific node pointer.
  * but if find failed then return NULL pointer
- * 
+ * d
  * @ref Horowitz, E., Sahni, S., & Anderson-Freed, S. (1992). Fundamentals of data structures in C. WH Freeman & Co..
  */
 static struct rb_node *__rb_tree_search(struct rb_node *root, key_t key)
@@ -303,6 +303,50 @@ static void rb_tree_transplant(struct rb_tree *tree, struct rb_node *prev_root,
         }
 
         next_root->parent = prev_root->parent;
+}
+
+/**
+ * @brief delete specific node's in red-black tree
+ * 
+ * @param tree red-black tree whole
+ * @param z delete target node
+ */
+static void __rb_tree_delete(struct rb_tree *tree, struct rb_node *z)
+{
+        struct rb_node *x = NULL;
+        struct rb_node *y = NULL;
+
+        enum rb_node_color y_original_color;
+
+        y = z;
+        y_original_color = y->color;
+        if (z->left == tree->nil) {
+                x = z->right;
+                rb_tree_transplant(tree, z, z->right);
+        } else if (z->right == tree->nil) {
+                x = z->left;
+                rb_tree_transplant(tree, z, z->right);
+        } else {
+                /* implemented yet */
+        }
+}
+
+/**
+ * @brief Wrapping function of `__rb_tree_delete`
+ * 
+ * @param tree red-black tree whole
+ * @param key delete target node's key
+ * @return int 0 means that delete success. Not 0 means delete fail.
+ */
+static int rb_tree_delete(struct rb_tree *tree, key_t key)
+{
+        struct rb_node *node = rb_tree_search(tree, key);
+        if (!node) {
+                return -ENODATA;
+        }
+        __rb_tree_delete(tree, node);
+        rb_node_dealloc(node);
+        return 0;
 }
 
 /**
