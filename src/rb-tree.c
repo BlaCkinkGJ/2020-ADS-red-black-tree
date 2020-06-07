@@ -170,7 +170,7 @@ struct rb_node *rb_tree_search(struct rb_tree *tree, key_t key)
  * @param tree red-black tree structure
  * @param z new node which insert into red-black tree
  */
-static void rb_insert_fixup(struct rb_tree *tree, struct rb_node *z)
+static void rb_tree_insert_fixup(struct rb_tree *tree, struct rb_node *z)
 {
         struct rb_node *y = NULL;
 
@@ -258,7 +258,7 @@ static int __rb_tree_insert(struct rb_tree *tree, struct rb_node *z)
         z->right = tree->nil;
         z->color = RB_NODE_COLOR_RED;
 
-        rb_insert_fixup(tree, z);
+        rb_tree_insert_fixup(tree, z);
 
         return 0;
 }
@@ -386,6 +386,82 @@ struct rb_node *rb_tree_predecessor(struct rb_tree *tree, struct rb_node *y)
 
         return x;
 }
+/**
+ * @brief Re-color nodes and perform rotations
+ * @details
+ * case 1: x's sibling w is red
+ * case 2: x's sibling w is black, and both of w's children are black 
+ * case 3: x's sibling w is black, w's left child is red, and w's right child is black
+ * case 4: x's sibling w is black, and w's right child is red
+ * 
+ * @param tree red-black tree structure
+ * @param x rotation key node pointer
+ */
+static void rb_tree_delete_fixup(struct rb_tree *tree, struct rb_node *x)
+{
+        struct rb_node *w = NULL;
+
+        while (x != tree->root && x->color != RB_NODE_COLOR_BLACK) {
+                if (x == x->parent->left) {
+                        w = x->parent->right;
+                        if (w->color == RB_NODE_COLOR_RED) {
+                                w->color = RB_NODE_COLOR_BLACK;
+                                x->parent->color = RB_NODE_COLOR_RED;
+                                rb_tree_left_rotate(tree, x->parent);
+                                w = x->parent->right;
+                        } /**< case 1 */
+
+                        if (w->left->color == RB_NODE_COLOR_BLACK &&
+                            w->right->color == RB_NODE_COLOR_BLACK) {
+                                w->color = RB_NODE_COLOR_RED;
+                                x = x->parent;
+                        } /**< case 2 */
+                        else {
+                                if (w->right->color == RB_NODE_COLOR_BLACK) {
+                                        w->left->color = RB_NODE_COLOR_BLACK;
+                                        w->color = RB_NODE_COLOR_RED;
+                                        rb_tree_right_rotate(tree, w);
+                                        w = x->parent->right;
+                                } /**< case 3 */
+
+                                w->color = x->parent->color;
+                                x->parent->color = RB_NODE_COLOR_BLACK;
+                                w->right->color = RB_NODE_COLOR_BLACK;
+                                rb_tree_left_rotate(tree, x->parent);
+                                x = tree->root; /**< case 4 */
+                        }
+                } else { /**< only different part is left and right */
+                        w = x->parent->left;
+                        if (w->color == RB_NODE_COLOR_RED) {
+                                w->color = RB_NODE_COLOR_BLACK;
+                                x->parent->color = RB_NODE_COLOR_RED;
+                                rb_tree_right_rotate(tree, x->parent);
+                                w = x->parent->left;
+                        } /**< case 1 */
+
+                        if (w->right->color == RB_NODE_COLOR_BLACK &&
+                            w->left->color == RB_NODE_COLOR_BLACK) {
+                                w->color = RB_NODE_COLOR_RED;
+                                x = x->parent;
+                        } /**< case 2 */
+                        else {
+                                if (w->left->color == RB_NODE_COLOR_BLACK) {
+                                        w->right->color = RB_NODE_COLOR_BLACK;
+                                        w->color = RB_NODE_COLOR_RED;
+                                        rb_tree_left_rotate(tree, w);
+                                        w = x->parent->left;
+                                } /**< case 3 */
+
+                                w->color = x->parent->color;
+                                x->parent->color = RB_NODE_COLOR_BLACK;
+                                w->left->color = RB_NODE_COLOR_BLACK;
+                                rb_tree_right_rotate(tree, x->parent);
+                                x = tree->root;
+                        }
+                }
+        }
+        x->color = RB_NODE_COLOR_BLACK;
+}
 
 /**
  * @brief delete specific node's in red-black tree
@@ -407,9 +483,26 @@ static void __rb_tree_delete(struct rb_tree *tree, struct rb_node *z)
                 rb_tree_transplant(tree, z, z->right);
         } else if (z->right == tree->nil) {
                 x = z->left;
-                rb_tree_transplant(tree, z, z->right);
+                rb_tree_transplant(tree, z, z->left);
         } else {
-                /* implemented yet */
+                y = rb_tree_minimum(tree, z->right);
+                y_original_color = y->color;
+                x = y->right;
+                if (y->parent == z) {
+                        x->parent = y;
+                } else {
+                        rb_tree_transplant(tree, y, y->right);
+                        y->right = z->right;
+                        y->right->parent = y;
+                }
+                rb_tree_transplant(tree, z, y);
+                y->left = z->left;
+                y->left->parent = y;
+                y->color = z->color;
+        }
+
+        if (y_original_color == RB_NODE_COLOR_BLACK) {
+                rb_tree_delete_fixup(tree, x);
         }
 }
 

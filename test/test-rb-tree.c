@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <time.h>
+#include <errno.h>
 
 #include "rb-tree.h"
 #include "unity.h"
@@ -64,7 +65,8 @@ void test_rb_invalid_search(void)
 void test_rb_minimum(void)
 {
         key_t values[] = { 10, 35, 5, 22 };
-        for (int i = 0; i < (int)(sizeof(values) / sizeof(key_t)); i++) {
+        const int nr_values = (int)(sizeof(values) / sizeof(key_t));
+        for (int i = 0; i < nr_values; i++) {
                 TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, values[i], NULL));
         }
         TEST_ASSERT_EQUAL(5, rb_tree_minimum(tree, tree->root)->key);
@@ -73,7 +75,8 @@ void test_rb_minimum(void)
 void test_rb_maximum(void)
 {
         key_t values[] = { 10, 35, 5, 22 };
-        for (int i = 0; i < (int)(sizeof(values) / sizeof(key_t)); i++) {
+        const int nr_values = (int)(sizeof(values) / sizeof(key_t));
+        for (int i = 0; i < nr_values; i++) {
                 TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, values[i], NULL));
         }
         TEST_ASSERT_EQUAL(35, rb_tree_maximum(tree, tree->root)->key);
@@ -86,7 +89,8 @@ void test_rb_successor_and_predecessor(void)
         key_t values[] = { 10, 35, 5, 22 };
         key_t expects[] = { -1, 5, 10, 22, 35, -1 };
         const int nr_expects = (int)(sizeof(expects) / sizeof(key_t));
-        for (int i = 0; i < (int)(sizeof(values) / sizeof(key_t)); i++) {
+        const int nr_values = (int)(sizeof(values) / sizeof(key_t));
+        for (int i = 0; i < nr_values; i++) {
                 TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, values[i], NULL));
         }
 
@@ -108,6 +112,26 @@ void test_rb_successor_and_predecessor(void)
         TEST_ASSERT_EQUAL(i, nr_expects - 2);
 }
 
+void test_rb_delete(void)
+{
+        struct rb_node *node;
+        key_t values[] = { 10, 35, 5, 22 };
+        const int nr_values = (int)(sizeof(values) / sizeof(key_t));
+        for (int i = 0; i < nr_values; i++) {
+                TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, values[i], NULL));
+        }
+        for (int i = 0; i < nr_values; i++) {
+                node = rb_tree_search(tree, values[i]);
+                TEST_ASSERT_NOT_NULL(node);
+                TEST_ASSERT_EQUAL(0, rb_tree_delete(tree, values[i]));
+                node = rb_tree_search(tree, values[i]);
+                TEST_ASSERT_NULL(node);
+                TEST_ASSERT_EQUAL(-ENODATA, rb_tree_delete(tree, values[i]));
+        }
+
+        TEST_ASSERT_EQUAL_PTR(tree->nil, tree->root);
+}
+
 int main(void)
 {
         UNITY_BEGIN();
@@ -118,6 +142,7 @@ int main(void)
         RUN_TEST(test_rb_minimum);
         RUN_TEST(test_rb_maximum);
         RUN_TEST(test_rb_successor_and_predecessor);
+        RUN_TEST(test_rb_delete);
 
         return UNITY_END();
 }
