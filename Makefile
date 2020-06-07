@@ -48,8 +48,8 @@ TEST_TARGET_BASE=test
 TARGET_BASE=run
 TARGET=$(TEST_TARGET_BASE)$(TARGET_EXTENSION)
 MAIN_TARGET=$(TARGET_BASE)$(TARGET_EXTENSION)
-SRC_FILES=src/rb-tree.c 
-TEST_SRC_FILES=$(UNITY_ROOT)/src/unity.c test/test-rb-tree.c $(SRC_FILES)
+SRC_FILES=src/rb-tree.c src/tango-tree.c
+TEST_SRC_FILES=$(UNITY_ROOT)/src/unity.c test/test-tango-tree.c $(SRC_FILES)
 INC_DIRS=-Isrc -I$(UNITY_ROOT)/src
 SYMBOLS=-D RB_TREE_DEBUG
 
