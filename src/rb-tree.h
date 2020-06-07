@@ -66,7 +66,12 @@ struct rb_tree {
 
 struct rb_tree *rb_tree_alloc(void);
 int rb_tree_insert(struct rb_tree *tree, const key_t key, void *data);
+struct rb_node *rb_tree_minimum(struct rb_tree *tree, struct rb_node *root);
+struct rb_node *rb_tree_maximum(struct rb_tree *tree, struct rb_node *root);
+struct rb_node *rb_tree_successor(struct rb_tree *tree, struct rb_node *x);
+struct rb_node *rb_tree_predecessor(struct rb_tree *tree, struct rb_node *y);
 struct rb_node *rb_tree_search(struct rb_tree *tree, key_t key);
+int rb_tree_delete(struct rb_tree *tree, key_t key);
 void rb_tree_dealloc(struct rb_tree *tree);
 
 /**
@@ -104,7 +109,7 @@ static inline void rb_set_nil_leaf_node(struct rb_node *nil)
         nil->color = RB_NODE_COLOR_BLACK;
         nil->parent = nil->left = nil->right = NULL;
         nil->data = NULL;
-        nil->key = 0;
+        nil->key = -1;
 }
 
 /**

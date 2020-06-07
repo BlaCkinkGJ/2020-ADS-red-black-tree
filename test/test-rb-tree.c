@@ -4,7 +4,7 @@
 #include "rb-tree.h"
 #include "unity.h"
 
-#define INSERT_SIZE (100000)
+#define INSERT_SIZE (1000)
 #define STR_BUF_SIZE (256)
 
 struct rb_tree *tree;
@@ -61,11 +61,63 @@ void test_rb_invalid_search(void)
         TEST_ASSERT_NOT_NULL(rb_tree_search(tree, key_arr[INSERT_SIZE - 1]));
 }
 
+void test_rb_minimum(void)
+{
+        key_t values[] = { 10, 35, 5, 22 };
+        for (int i = 0; i < (int)(sizeof(values) / sizeof(key_t)); i++) {
+                TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, values[i], NULL));
+        }
+        TEST_ASSERT_EQUAL(5, rb_tree_minimum(tree, tree->root)->key);
+}
+
+void test_rb_maximum(void)
+{
+        key_t values[] = { 10, 35, 5, 22 };
+        for (int i = 0; i < (int)(sizeof(values) / sizeof(key_t)); i++) {
+                TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, values[i], NULL));
+        }
+        TEST_ASSERT_EQUAL(35, rb_tree_maximum(tree, tree->root)->key);
+}
+
+void test_rb_successor_and_predecessor(void)
+{
+        struct rb_node *succ, *pred, *cur;
+        int i = 0;
+        key_t values[] = { 10, 35, 5, 22 };
+        key_t expects[] = { -1, 5, 10, 22, 35, -1 };
+        const int nr_expects = (int)(sizeof(expects) / sizeof(key_t));
+        for (int i = 0; i < (int)(sizeof(values) / sizeof(key_t)); i++) {
+                TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, values[i], NULL));
+        }
+
+        cur = rb_tree_minimum(tree, tree->root);
+        for (i = 0; i < (nr_expects - 1) && cur != tree->nil; i++) {
+                succ = rb_tree_successor(tree, cur);
+                pred = rb_tree_predecessor(tree, cur);
+
+                TEST_ASSERT_NOT_NULL(cur);
+                TEST_ASSERT_NOT_NULL(succ);
+                TEST_ASSERT_NOT_NULL(pred);
+
+                cur = succ;
+
+                TEST_ASSERT_EQUAL(expects[i], pred->key);
+                TEST_ASSERT_EQUAL(expects[i + 2], succ->key);
+        }
+        TEST_ASSERT_EQUAL(tree->nil, cur);
+        TEST_ASSERT_EQUAL(i, nr_expects - 2);
+}
+
 int main(void)
 {
         UNITY_BEGIN();
+
         RUN_TEST(test_rb_insert);
         RUN_TEST(test_rb_valid_search);
         RUN_TEST(test_rb_invalid_search);
+        RUN_TEST(test_rb_minimum);
+        RUN_TEST(test_rb_maximum);
+        RUN_TEST(test_rb_successor_and_predecessor);
+
         return UNITY_END();
 }

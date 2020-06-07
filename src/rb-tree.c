@@ -306,6 +306,88 @@ static void rb_tree_transplant(struct rb_tree *tree, struct rb_node *prev_root,
 }
 
 /**
+ * @brief Get red-black tree's minimum node
+ * 
+ * @param tree red-black tree whole
+ * @param root root of red-black tree
+ * @return struct rb_node* minimum red-black tree node
+ */
+struct rb_node *rb_tree_minimum(struct rb_tree *tree, struct rb_node *root)
+{
+        while (root->left != tree->nil) {
+                root = root->left;
+        }
+
+        return root;
+}
+
+/**
+ * @brief Get red-black tree's maximum node
+ * 
+ * @param tree red-black tree whole
+ * @param root root of red-black tree
+ * @return struct rb_node* maximum red-black tree node
+ */
+struct rb_node *rb_tree_maximum(struct rb_tree *tree, struct rb_node *root)
+{
+        while (root->right != tree->nil) {
+                root = root->right;
+        }
+
+        return root;
+}
+
+/**
+ * @brief successor of specific node location
+ * 
+ * @param tree red-black tree whole
+ * @param x specific node location of tree
+ * @return struct rb_node* node which successor of specific node location
+ */
+struct rb_node *rb_tree_successor(struct rb_tree *tree, struct rb_node *x)
+{
+        struct rb_node *y = NULL;
+
+        if (x->right != tree->nil) {
+                return rb_tree_minimum(tree, x->right);
+        }
+
+        y = x->parent;
+
+        while (y != tree->nil && x == y->right) {
+                x = y;
+                y = y->parent;
+        }
+
+        return y;
+}
+
+/**
+ * @brief predecessor of specific node location
+ * 
+ * @param tree red-black tree whole
+ * @param x specific node location of tree
+ * @return struct rb_node* node which predecessor of specific node location
+ */
+struct rb_node *rb_tree_predecessor(struct rb_tree *tree, struct rb_node *y)
+{
+        struct rb_node *x = NULL;
+
+        if (y->left != tree->nil) {
+                return rb_tree_maximum(tree, y->left);
+        }
+
+        x = y->parent;
+
+        while (x != tree->nil && y == x->left) {
+                y = x;
+                x = x->parent;
+        }
+
+        return x;
+}
+
+/**
  * @brief delete specific node's in red-black tree
  * 
  * @param tree red-black tree whole
@@ -338,7 +420,7 @@ static void __rb_tree_delete(struct rb_tree *tree, struct rb_node *z)
  * @param key delete target node's key
  * @return int 0 means that delete success. Not 0 means delete fail.
  */
-static int rb_tree_delete(struct rb_tree *tree, key_t key)
+int rb_tree_delete(struct rb_tree *tree, key_t key)
 {
         struct rb_node *node = rb_tree_search(tree, key);
         if (!node) {
