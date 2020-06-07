@@ -35,6 +35,7 @@ struct rb_tree *rb_tree_alloc(void)
         rb_set_nil_leaf_node(tree->nil);
 
         tree->root = tree->nil;
+        tree->bh = 0;
 
         return tree;
 exception:
@@ -209,6 +210,10 @@ static void rb_tree_insert_fixup(struct rb_tree *tree, struct rb_node *z)
                                 rb_tree_left_rotate(tree, z->parent->parent);
                         }
                 }
+        }
+
+        if (tree->root->color == RB_NODE_COLOR_RED) {
+                tree->bh += 1;
         }
         tree->root->color = RB_NODE_COLOR_BLACK;
 }
@@ -400,8 +405,11 @@ struct rb_node *rb_tree_predecessor(struct rb_tree *tree, struct rb_node *y)
 static void rb_tree_delete_fixup(struct rb_tree *tree, struct rb_node *x)
 {
         struct rb_node *w = NULL;
+        int is_forced = 0;
+        int is_goes_up = 0;
 
-        while (x != tree->root && x->color != RB_NODE_COLOR_BLACK) {
+        while (x != tree->root && x->color == RB_NODE_COLOR_BLACK) {
+                is_goes_up = 1;
                 if (x == x->parent->left) {
                         w = x->parent->right;
                         if (w->color == RB_NODE_COLOR_RED) {
@@ -429,6 +437,7 @@ static void rb_tree_delete_fixup(struct rb_tree *tree, struct rb_node *x)
                                 w->right->color = RB_NODE_COLOR_BLACK;
                                 rb_tree_left_rotate(tree, x->parent);
                                 x = tree->root; /**< case 4 */
+                                is_forced = 1;
                         }
                 } else { /**< only different part is left and right */
                         w = x->parent->left;
@@ -456,9 +465,13 @@ static void rb_tree_delete_fixup(struct rb_tree *tree, struct rb_node *x)
                                 x->parent->color = RB_NODE_COLOR_BLACK;
                                 w->left->color = RB_NODE_COLOR_BLACK;
                                 rb_tree_right_rotate(tree, x->parent);
-                                x = tree->root;
+                                x = tree->root; /**< case 4 */
+                                is_forced = 1;
                         }
                 }
+        }
+        if (x == tree->nil || (is_goes_up && !is_forced && x == tree->root)) {
+                tree->bh -= 1;
         }
         x->color = RB_NODE_COLOR_BLACK;
 }
@@ -559,3 +572,27 @@ void rb_tree_dealloc(struct rb_tree *tree)
 
         free(tree);
 }
+
+#ifdef RB_TREE_DEBUG
+void rb_tree_dump(struct rb_tree *tree, struct rb_node *root, size_t indent)
+{
+        const size_t INDENT_SIZE = 3;
+        size_t i = 0;
+
+        if (root == tree->nil) {
+                return;
+        }
+
+        indent += INDENT_SIZE;
+
+        rb_tree_dump(tree, root->right, indent);
+
+        printf("\n");
+        for (i = INDENT_SIZE; i < indent; i++) {
+                printf(" ");
+        }
+        printf("%ld\n", root->key);
+
+        rb_tree_dump(tree, root->left, indent);
+}
+#endif

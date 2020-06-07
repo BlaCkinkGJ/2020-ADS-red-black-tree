@@ -32,6 +32,8 @@ typedef uint64_t key_t;
                 __LINE__, ##__VA_ARGS__)
 #endif
 
+// #define RB_TREE_DEBUG
+
 /**
  * @brief rb_node's color type
  * 
@@ -62,6 +64,7 @@ struct rb_node {
 struct rb_tree {
         struct rb_node *root;
         struct rb_node *nil; /**< same as Nil in CLRS books */
+        size_t bh;
 };
 
 struct rb_tree *rb_tree_alloc(void);
@@ -73,6 +76,10 @@ struct rb_node *rb_tree_predecessor(struct rb_tree *tree, struct rb_node *y);
 struct rb_node *rb_tree_search(struct rb_tree *tree, key_t key);
 int rb_tree_delete(struct rb_tree *tree, key_t key);
 void rb_tree_dealloc(struct rb_tree *tree);
+
+#ifdef RB_TREE_DEBUG
+void rb_tree_dump(struct rb_tree *tree, struct rb_node *root, size_t indent);
+#endif
 
 /**
  * @brief Red-black tree color test

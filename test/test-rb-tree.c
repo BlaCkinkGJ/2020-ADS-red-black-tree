@@ -132,6 +132,36 @@ void test_rb_delete(void)
         TEST_ASSERT_EQUAL_PTR(tree->nil, tree->root);
 }
 
+void test_rb_bh(void)
+{
+        key_t insert_seq[] = { 10, 20, 5,  7,  6,  19, 18,
+                               17, 16, 15, 21, 22, 14, 13 };
+        key_t delete_seq[] = { 10, 6,  5,  16, 7,  13, 15,
+                               14, 21, 20, 22, 18, 19, 17 };
+        size_t insert_bh[] = { 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3 };
+        size_t delete_bh[] = { 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 1, 1, 0 };
+        const int nr_inserts = (int)(sizeof(insert_seq) / sizeof(key_t));
+        const int nr_deletes = (int)(sizeof(delete_seq) / sizeof(key_t));
+        for (int i = 0; i < nr_inserts; i++) {
+                TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, insert_seq[i], NULL));
+                TEST_ASSERT_EQUAL(insert_bh[i], tree->bh);
+        }
+
+        for (int i = 0; i < nr_deletes; i++) {
+                TEST_ASSERT_EQUAL(0, rb_tree_delete(tree, delete_seq[i]));
+#ifdef RB_TREE_DEBUG
+                rb_tree_dump(tree, tree->root, 0);
+                pr_info("=============================\n");
+#endif
+                TEST_ASSERT_EQUAL(delete_bh[i], tree->bh);
+        }
+
+        for (int i = 0; i < nr_inserts; i++) {
+                TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, insert_seq[i], NULL));
+                TEST_ASSERT_EQUAL(insert_bh[i], tree->bh);
+        }
+}
+
 int main(void)
 {
         UNITY_BEGIN();
@@ -143,6 +173,7 @@ int main(void)
         RUN_TEST(test_rb_maximum);
         RUN_TEST(test_rb_successor_and_predecessor);
         RUN_TEST(test_rb_delete);
+        RUN_TEST(test_rb_bh);
 
         return UNITY_END();
 }
