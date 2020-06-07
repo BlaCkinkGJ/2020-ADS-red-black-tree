@@ -62,7 +62,7 @@ endif
 all: clean main
 
 main: clean $(SRC_FILES) src/main.c
-	$(C_COMPILER) $(CFLAGS) $(INC_DIRS) $(SYMBOLS) $(SRC_FILES) -o $(MAIN_TARGET)
+	$(C_COMPILER) $(CFLAGS) $(INC_DIRS) $(SYMBOLS) $(SRC_FILES) src/main.c -o $(MAIN_TARGET)
 
 test: clean $(TEST_SRC_FILES)
 	$(C_COMPILER) $(CFLAGS) $(INC_DIRS) $(SYMBOLS) $(TEST_SRC_FILES) -o $(TARGET)
