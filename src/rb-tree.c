@@ -13,12 +13,15 @@
 #include "rb-tree.h"
 
 static struct rb_global_info rb_info = {
-        .nil = { .color = RB_NODE_COLOR_BLACK,
-                 .key = RB_NODE_NIL_KEY_VALUE,
-                 .left = NULL,
-                 .right = NULL,
-                 .parent = NULL, 
-                 .data = NULL,
+        .nil = { 
+                .color = RB_NODE_COLOR_BLACK,
+
+                .key = RB_NODE_NIL_KEY_VALUE,
+                .data = NULL,
+
+                .left = NULL,
+                .right = NULL,
+                .parent = NULL,
         },
 }; /**< global red-black information */
 
