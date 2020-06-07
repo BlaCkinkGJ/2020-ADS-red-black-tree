@@ -51,7 +51,7 @@ MAIN_TARGET=$(TARGET_BASE)$(TARGET_EXTENSION)
 SRC_FILES=src/rb-tree.c 
 TEST_SRC_FILES=$(UNITY_ROOT)/src/unity.c test/test-rb-tree.c $(SRC_FILES)
 INC_DIRS=-Isrc -I$(UNITY_ROOT)/src
-SYMBOLS=
+SYMBOLS=-D RB_TREE_DEBUG
 
 ifeq ($(OS),Windows_NT)
 	TEST_EXEC=./$(TARGET)

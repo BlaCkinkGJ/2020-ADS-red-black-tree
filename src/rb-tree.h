@@ -17,7 +17,9 @@
 #include <time.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
+#include <limits.h>
 
 #ifdef key_t
 #warning "already key_t is defined"
@@ -25,8 +27,9 @@
 typedef uint64_t key_t;
 #endif
 
-#define RB_NODE_NIL_KEY_VALUE ((key_t)(-1))
 #define RB_INVALID_BLACK_HEIGHT (-1)
+#define RB_MAX_KEY ((key_t)(LONG_MAX))
+#define RB_NODE_NIL_KEY_VALUE (RB_MAX_KEY)
 
 #ifndef pr_info
 #define pr_info(msg, ...)                                                      \
@@ -34,8 +37,6 @@ typedef uint64_t key_t;
                 ((double)clock() / CLOCKS_PER_SEC), __FILE__, __func__,        \
                 __LINE__, ##__VA_ARGS__)
 #endif
-
-// #define RB_TREE_DEBUG
 
 /**
  * @brief rb_node's color type
@@ -83,12 +84,27 @@ struct rb_node *rb_tree_minimum(struct rb_tree *tree, struct rb_node *root);
 struct rb_node *rb_tree_maximum(struct rb_tree *tree, struct rb_node *root);
 struct rb_node *rb_tree_successor(struct rb_tree *tree, struct rb_node *x);
 struct rb_node *rb_tree_predecessor(struct rb_tree *tree, struct rb_node *y);
+struct rb_tree *rb_tree_concat(struct rb_tree *t1, struct rb_tree *t2,
+                               struct rb_node *x);
+int rb_tree_split(struct rb_tree *tree, const key_t x, struct rb_tree **result1,
+                  struct rb_tree **result2);
 int rb_tree_delete(struct rb_tree *tree, key_t key);
 void rb_tree_dealloc(struct rb_tree *tree);
 
 #ifdef RB_TREE_DEBUG
-void rb_tree_dump(struct rb_tree *tree, struct rb_node *root, size_t indent);
+void rb_tree_dump(struct rb_tree *tree);
 #endif
+
+/**
+ * @brief copy the source tree's metadata to destination tree
+ * 
+ * @param dest destination(target) tree
+ * @param src source(base) tree
+ */
+static inline void rb_tree_copy(struct rb_tree *dest, struct rb_tree *src)
+{
+        memcpy(dest, src, sizeof(struct rb_tree));
+}
 
 /**
  * @brief Node check if the node is equal to tree->nil
@@ -111,8 +127,14 @@ static inline int rb_node_is_leaf(struct rb_tree *tree, struct rb_node *node)
  */
 static inline struct rb_node *rb_node_alloc(const key_t key)
 {
-        struct rb_node *new_node =
-                (struct rb_node *)malloc(sizeof(struct rb_node));
+        struct rb_node *new_node = NULL;
+
+        if (key >= RB_MAX_KEY) {
+                pr_info("Invalid key value\n");
+                return NULL;
+        }
+
+        new_node = (struct rb_node *)malloc(sizeof(struct rb_node));
         if (!new_node) {
                 pr_info("Memory allocation failed\n");
                 return NULL;

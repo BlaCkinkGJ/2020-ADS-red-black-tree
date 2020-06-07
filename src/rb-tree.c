@@ -290,7 +290,7 @@ static int __rb_tree_insert(struct rb_tree *tree, struct rb_node *z)
         }
 
         if (z->key == RB_NODE_NIL_KEY_VALUE) {
-                pr_info("%ld key value is preserved by tree->nil",
+                pr_info("%ld key value is preserved by tree->nil\n",
                         RB_NODE_NIL_KEY_VALUE);
                 return -EINVAL;
         }
@@ -319,8 +319,12 @@ static int __rb_tree_insert(struct rb_tree *tree, struct rb_node *z)
                 y->right = z;
         }
 
-        z->left = tree->nil;
-        z->right = tree->nil;
+        if (z->left == NULL) {
+                z->left = tree->nil;
+        }
+        if (z->right == NULL) {
+                z->right = tree->nil;
+        }
         z->color = RB_NODE_COLOR_RED;
 
         rb_tree_insert_fixup(tree, z);
@@ -387,6 +391,10 @@ static void rb_tree_transplant(struct rb_tree *tree, struct rb_node *prev_root,
  */
 struct rb_node *rb_tree_minimum(struct rb_tree *tree, struct rb_node *root)
 {
+        if (root == tree->nil) {
+                return root;
+        }
+
         while (root->left != tree->nil) {
                 root = root->left;
         }
@@ -403,6 +411,10 @@ struct rb_node *rb_tree_minimum(struct rb_tree *tree, struct rb_node *root)
  */
 struct rb_node *rb_tree_maximum(struct rb_tree *tree, struct rb_node *root)
 {
+        if (root == tree->nil) {
+                return root;
+        }
+
         while (root->right != tree->nil) {
                 root = root->right;
         }
@@ -606,6 +618,186 @@ int rb_tree_delete(struct rb_tree *tree, key_t key)
 }
 
 /**
+ * @brief Concatenate two red-black tree by using node x
+ * 
+ * @param t1 red-black tree which have all value is smaller than x->key
+ * @param t2 red-black tree which have all value is greater than x->key
+ * @param x node which value is over max(t1->key) < x < min(t2->key)
+ * @return struct rb_tree* 
+ * 
+ * @ref Introduction to Algorithms(CLRS) ▶ red-black tree chapter ▶ problem 13-2
+ */
+struct rb_tree *rb_tree_concat(struct rb_tree *t1, struct rb_tree *t2,
+                               struct rb_node *x)
+{
+        struct rb_tree *new_tree = NULL;
+        struct rb_node *y = NULL;
+        struct rb_node *x1_max_node = NULL;
+        struct rb_node *x2_min_node = NULL;
+
+        key_t x1_max_key = RB_NODE_NIL_KEY_VALUE;
+        key_t x2_min_key = RB_NODE_NIL_KEY_VALUE;
+
+        size_t bh = 0;
+
+        x1_max_node = rb_tree_maximum(t1, t1->root);
+        x2_min_node = rb_tree_minimum(t2, t2->root);
+
+        x1_max_key = x1_max_node->key;
+        x2_min_key = x2_min_node->key;
+
+        /**< Originally allow the same key. But this version doesn't allow it */
+        if (!(x1_max_key <= x->key && x->key <= x2_min_key)) {
+                pr_info("invalid state key state x1.key(%ld) <= x.key(%ld) <= x2.key(%ld)\n",
+                        x1_max_key, x->key, x2_min_key);
+                return NULL;
+        }
+
+        if (x->key == x1_max_key || x->key == x2_min_key) {
+                struct rb_node *prev_x = x;
+                struct rb_tree *tree = (x->key == x1_max_key ? t1 : t2);
+                __rb_tree_delete(tree, prev_x);
+                x = rb_node_alloc(prev_x->key);
+                x->data = prev_x->data;
+                prev_x->data = NULL;
+                rb_node_dealloc(prev_x);
+        }
+
+        new_tree = rb_tree_alloc();
+        if (!new_tree) {
+                pr_info("new tree allocation failed...\n");
+                return NULL;
+        }
+
+        if (t1->bh >= t2->bh) {
+                y = t1->root;
+                bh = t1->bh;
+                while (bh != t2->bh) {
+                        if (y->right != t1->nil) {
+                                y = y->right;
+                        } else if (y->left != t1->nil) {
+                                y = y->left;
+                        } else {
+                                break;
+                        }
+
+                        if (y->color == RB_NODE_COLOR_BLACK) {
+                                bh -= 1;
+                        }
+                }
+
+                rb_tree_transplant(t1, y, x);
+                x->left = y;
+                x->right = t2->root;
+                y->parent = x;
+                t2->root->parent = x;
+
+                rb_tree_insert_fixup(t1, x);
+
+                rb_tree_copy(new_tree, t1);
+        } else { /**> symmetric of previous sequence */
+                y = t2->root;
+                bh = t2->bh;
+                while (bh != t1->bh) {
+                        if (y->left != t2->nil) {
+                                y = y->left;
+                        } else if (y->right != t2->nil) {
+                                y = y->right;
+                        } else {
+                                break;
+                        }
+
+                        if (y->color == RB_NODE_COLOR_BLACK) {
+                                bh -= 1;
+                        }
+                }
+
+                rb_tree_transplant(t2, y, x);
+                x->left = t1->root;
+                x->right = y;
+                y->parent = x;
+                t1->root->parent = x;
+
+                rb_tree_insert_fixup(t2, x);
+
+                rb_tree_copy(new_tree, t2);
+        }
+
+        free(t1);
+        free(t2);
+
+        return new_tree;
+}
+
+/**
+ * @brief Split tree to t1, t2 based on key value x
+ * 
+ * @param tree split target tree
+ * @param x split point
+ * @param result1 t1 stored location
+ * @param result2 t2 stored location
+ * @return int If return value is 0 then success.
+ * However, if return value is not 0 then failed.
+ */
+int rb_tree_split(struct rb_tree *tree, const key_t x, struct rb_tree **result1,
+                  struct rb_tree **result2)
+{
+        struct rb_tree *t1 = NULL;
+        struct rb_tree *t2 = NULL;
+
+        struct rb_node *k = NULL;
+
+        int ret = 0;
+
+        t1 = rb_tree_alloc();
+        if (!t1) {
+                ret = -ENOMEM;
+                goto exception;
+        }
+        t2 = rb_tree_alloc();
+        if (!t2) {
+                ret = -ENOMEM;
+                goto exception;
+        }
+
+        k = tree->root;
+
+        while (k != tree->nil) {
+                struct rb_node *temp = k;
+                if (x < k->key) {
+                        if (k->right != tree->nil) {
+                                __rb_tree_insert(t2, k->right);
+                        }
+                        rb_tree_insert(t2, k->key, k->data);
+                        k = k->left;
+                } else {
+                        if (k->left != tree->nil) {
+                                __rb_tree_insert(t1, k->left);
+                        }
+                        rb_tree_insert(t1, k->key, k->data);
+                        k = k->right;
+                }
+
+                free(temp);
+        }
+
+        *result1 = t1;
+        *result2 = t2;
+        free(tree);
+        return ret;
+exception:
+        if (t1) {
+                rb_tree_dealloc(t1);
+        }
+        if (t2) {
+                rb_tree_dealloc(t2);
+        }
+        *result1 = NULL;
+        *result2 = NULL;
+        return ret;
+}
+
+/**
  * @brief Does deallocation of the red-black tree subtree
  * 
  * @param tree red-black tree whole
@@ -641,7 +833,8 @@ void rb_tree_dealloc(struct rb_tree *tree)
 }
 
 #ifdef RB_TREE_DEBUG
-void rb_tree_dump(struct rb_tree *tree, struct rb_node *root, size_t indent)
+static void __rb_tree_dump(struct rb_tree *tree, struct rb_node *root,
+                           size_t indent)
 {
         const size_t INDENT_SIZE = 3;
 
@@ -651,7 +844,7 @@ void rb_tree_dump(struct rb_tree *tree, struct rb_node *root, size_t indent)
 
         indent += INDENT_SIZE;
 
-        rb_tree_dump(tree, root->right, indent);
+        __rb_tree_dump(tree, root->right, indent);
 
         printf("\n");
         for (size_t i = INDENT_SIZE; i < indent; i++) {
@@ -659,6 +852,11 @@ void rb_tree_dump(struct rb_tree *tree, struct rb_node *root, size_t indent)
         }
         printf("%ld\n", root->key);
 
-        rb_tree_dump(tree, root->left, indent);
+        __rb_tree_dump(tree, root->left, indent);
+}
+
+void rb_tree_dump(struct rb_tree *tree)
+{
+        __rb_tree_dump(tree, tree->root, 0);
 }
 #endif

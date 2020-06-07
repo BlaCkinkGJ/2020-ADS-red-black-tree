@@ -7,22 +7,36 @@
 
 #define INSERT_SIZE (1000)
 #define STR_BUF_SIZE (256)
+#define NR_TREE (2)
 
+struct rb_tree *tree_arr[NR_TREE];
 struct rb_tree *tree;
 key_t *key_arr;
 char **data_arr;
 
 void setUp(void)
 {
-        tree = rb_tree_alloc();
-        key_arr = (key_t *)malloc(sizeof(key_t) * INSERT_SIZE);
-        data_arr = (char **)malloc(sizeof(char *) * INSERT_SIZE);
+        for (int i = 0; i < NR_TREE; i++) {
+                tree_arr[i] = rb_tree_alloc();
+                TEST_ASSERT_NOT_NULL(tree_arr[i]);
+        }
+
+        tree = tree_arr[0];
         TEST_ASSERT_NOT_NULL(tree);
+
+        key_arr = (key_t *)malloc(sizeof(key_t) * INSERT_SIZE);
+        TEST_ASSERT_NOT_NULL(key_arr);
+        data_arr = (char **)malloc(sizeof(char *) * INSERT_SIZE);
+        TEST_ASSERT_NOT_NULL(data_arr);
 }
 
 void tearDown(void)
 {
-        rb_tree_dealloc(tree);
+        for (int i = 0; i < NR_TREE; i++) {
+                if (tree_arr[i] != NULL) {
+                        rb_tree_dealloc(tree_arr[i]);
+                }
+        }
 
         free(key_arr);
         free(data_arr);
@@ -164,10 +178,6 @@ void test_rb_bh(void)
 
         for (int i = 0; i < nr_deletes; i++) {
                 TEST_ASSERT_EQUAL(0, rb_tree_delete(tree, delete_seq[i]));
-#ifdef RB_TREE_DEBUG
-                rb_tree_dump(tree, tree->root, 0);
-                pr_info("=============================\n");
-#endif
                 TEST_ASSERT_EQUAL(delete_bh[i], tree->bh);
         }
 
@@ -175,6 +185,75 @@ void test_rb_bh(void)
                 TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, insert_seq[i], NULL));
                 TEST_ASSERT_EQUAL(insert_bh[i], tree->bh);
         }
+}
+
+void test_rb_concat(void)
+{
+        struct rb_tree *t1 = tree_arr[0];
+        struct rb_tree *t2 = tree_arr[1];
+        struct rb_node *x;
+
+        key_t t1_data[] = { 1, 2, 3, 4, 5 };
+        key_t t2_data[] = { 7, 8, 9, 10, 11 };
+
+        const int nr_t1_data = (int)(sizeof(t1_data) / sizeof(key_t));
+        const int nr_t2_data = (int)(sizeof(t2_data) / sizeof(key_t));
+
+        for (int i = 0; i < nr_t1_data; i++) {
+                TEST_ASSERT_EQUAL(0, rb_tree_insert(t1, t1_data[i], NULL));
+        }
+
+        for (int i = 0; i < nr_t2_data; i++) {
+                TEST_ASSERT_EQUAL(0, rb_tree_insert(t2, t2_data[i], NULL));
+        }
+
+        x = rb_tree_minimum(t2, t2->root);
+        tree = rb_tree_concat(t1, t2, x);
+        if (tree == NULL) {
+                rb_node_dealloc(x);
+        } else {
+                tree_arr[0] = NULL;
+                tree_arr[1] = NULL;
+        }
+        TEST_ASSERT_NOT_NULL(tree);
+        tree_arr[0] = tree;
+
+        for (int i = 0; i < nr_t1_data; i++) {
+                struct rb_node *find = rb_tree_search(tree, t1_data[i]);
+                TEST_ASSERT_NOT_NULL(find);
+                TEST_ASSERT_EQUAL(t1_data[i], find->key);
+        }
+
+        for (int i = 0; i < nr_t2_data; i++) {
+                struct rb_node *find = rb_tree_search(tree, t2_data[i]);
+                TEST_ASSERT_NOT_NULL(find);
+                TEST_ASSERT_EQUAL(t2_data[i], find->key);
+        }
+}
+
+void test_rb_split(void)
+{
+        struct rb_tree *tree = tree_arr[0];
+        struct rb_tree *t1 = NULL;
+        struct rb_tree *t2 = NULL;
+        key_t tree_data[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+        const key_t SPLIT_POINT = 6;
+
+        const int nr_tree_data = (int)(sizeof(tree_data) / sizeof(key_t));
+        for (int i = 0; i < nr_tree_data; i++) {
+                TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, tree_data[i], NULL));
+        }
+
+        rb_tree_split(tree, SPLIT_POINT, &t1, &t2);
+        for (int i = 0; i < nr_tree_data; i++) {
+                size_t t1_addr = (size_t)rb_tree_search(t1, tree_data[i]);
+                size_t t2_addr = (size_t)rb_tree_search(t2, tree_data[i]);
+                TEST_ASSERT_NOT_EQUAL(0, (t1_addr | t2_addr));
+                TEST_ASSERT_EQUAL(0, (t1_addr & t2_addr));
+        }
+        tree_arr[0] = NULL;
+        rb_tree_dealloc(t1);
+        rb_tree_dealloc(t2);
 }
 
 int main(void)
@@ -189,6 +268,8 @@ int main(void)
         RUN_TEST(test_rb_successor_and_predecessor);
         RUN_TEST(test_rb_delete);
         RUN_TEST(test_rb_bh);
+        RUN_TEST(test_rb_concat);
+        RUN_TEST(test_rb_split);
 
         return UNITY_END();
 }
