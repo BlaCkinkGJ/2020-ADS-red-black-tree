@@ -27,12 +27,11 @@ struct rb_tree *rb_tree_alloc(void)
 
         tree->root = NULL;
 
-        tree->nil = (struct rb_node *)malloc(sizeof(struct rb_node));
+        tree->nil = rb_node_alloc(RB_NODE_NIL_KEY_VALUE);
         if (!tree->nil) {
                 pr_info("Memory shortage detected! Allocation failed...");
                 goto exception;
         }
-        rb_set_nil_leaf_node(tree->nil);
 
         tree->root = tree->nil;
         tree->bh = 0;
@@ -152,13 +151,62 @@ static struct rb_node *__rb_tree_search(struct rb_node *root, key_t key)
 /**
  * @brief Wrapping function of `__rb_tree_search` function
  * 
- * @param tree 
- * @param key 
- * @return struct rb_node* 
+ * @param tree red-black tree whole
+ * @param key key which I want to find
+ * @return struct rb_node* if find success then return specific node pointer.
+ * but if find failed then return NULL pointer
  */
 struct rb_node *rb_tree_search(struct rb_tree *tree, key_t key)
 {
         return __rb_tree_search(tree->root, key);
+}
+
+/**
+ * @brief Get bh(black-height) of red-black tree's node which the same value of key.
+ * Based on binary search method
+ * 
+ * @param root red-black tree's root
+ * @param key the key which I want to get bh
+ * @return struct rb_node* specific node's bh
+ * d
+ * @ref Horowitz, E., Sahni, S., & Anderson-Freed, S. (1992). Fundamentals of data structures in C. WH Freeman & Co..
+ */
+size_t __rb_tree_get_bh(struct rb_tree *tree, struct rb_node *root, key_t key)
+{
+        size_t bh = tree->bh;
+        struct rb_node *node = root;
+        while (node) {
+                if (key == node->key) { /**< Find the specific values */
+                        break;
+                }
+
+                if (node->color == RB_NODE_COLOR_BLACK) {
+                        bh -= 1;
+                }
+                if (key < node->key) {
+                        node = node->left;
+                } else {
+                        node = node->right;
+                }
+        }
+
+        if (node == NULL) {
+                bh = RB_INVALID_BLACK_HEIGHT;
+        }
+
+        return bh;
+}
+
+/**
+ * @brief Wrapping function of `__rb_tree_get_bh` function
+ * 
+ * @param tree red-black tree whole
+ * @param key specific key which I want to get black-height
+ * @return size_t size of black height
+ */
+size_t rb_tree_get_bh(struct rb_tree *tree, key_t key)
+{
+        return __rb_tree_get_bh(tree, tree->root, key);
 }
 
 /**
@@ -232,6 +280,12 @@ static int __rb_tree_insert(struct rb_tree *tree, struct rb_node *z)
 
         if (z == NULL) {
                 pr_info("z must be not null");
+                return -ENOMEM;
+        }
+
+        if (z->key == RB_NODE_NIL_KEY_VALUE) {
+                pr_info("%ld key value is preserved by tree->nil",
+                        RB_NODE_NIL_KEY_VALUE);
                 return -EINVAL;
         }
 
@@ -278,7 +332,10 @@ static int __rb_tree_insert(struct rb_tree *tree, struct rb_node *z)
  */
 int rb_tree_insert(struct rb_tree *tree, const key_t key, void *data)
 {
-        struct rb_node *node = rb_node_alloc(key);
+        struct rb_node *node = NULL;
+        int ret;
+
+        node = rb_node_alloc(key);
         if (!node) {
                 pr_info("Allocate the node failed");
                 return -ENOMEM;
@@ -286,7 +343,12 @@ int rb_tree_insert(struct rb_tree *tree, const key_t key, void *data)
 
         node->data = data;
 
-        return __rb_tree_insert(tree, node);
+        ret = __rb_tree_insert(tree, node);
+        if (ret == -EINVAL) {
+                rb_node_dealloc(node);
+        }
+
+        return ret;
 }
 
 /**
@@ -577,7 +639,6 @@ void rb_tree_dealloc(struct rb_tree *tree)
 void rb_tree_dump(struct rb_tree *tree, struct rb_node *root, size_t indent)
 {
         const size_t INDENT_SIZE = 3;
-        size_t i = 0;
 
         if (root == tree->nil) {
                 return;
@@ -588,7 +649,7 @@ void rb_tree_dump(struct rb_tree *tree, struct rb_node *root, size_t indent)
         rb_tree_dump(tree, root->right, indent);
 
         printf("\n");
-        for (i = INDENT_SIZE; i < indent; i++) {
+        for (size_t i = INDENT_SIZE; i < indent; i++) {
                 printf(" ");
         }
         printf("%ld\n", root->key);

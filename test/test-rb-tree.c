@@ -87,7 +87,8 @@ void test_rb_successor_and_predecessor(void)
         struct rb_node *succ, *pred, *cur;
         int i = 0;
         key_t values[] = { 10, 35, 5, 22 };
-        key_t expects[] = { -1, 5, 10, 22, 35, -1 };
+        key_t expects[] = { RB_NODE_NIL_KEY_VALUE, 5, 10, 22, 35,
+                            RB_NODE_NIL_KEY_VALUE };
         const int nr_expects = (int)(sizeof(expects) / sizeof(key_t));
         const int nr_values = (int)(sizeof(values) / sizeof(key_t));
         for (int i = 0; i < nr_values; i++) {
@@ -138,14 +139,28 @@ void test_rb_bh(void)
                                17, 16, 15, 21, 22, 14, 13 };
         key_t delete_seq[] = { 10, 6,  5,  16, 7,  13, 15,
                                14, 21, 20, 22, 18, 19, 17 };
+        key_t get_bh_seq[] = { 17, 10, 19, 6,  15, 18, 21,
+                               5,  7,  14, 16, 20, 22, 13 };
+
         size_t insert_bh[] = { 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3 };
         size_t delete_bh[] = { 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 1, 1, 0 };
+        size_t get_bh[] = { 3, 2, 2, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0 };
+
         const int nr_inserts = (int)(sizeof(insert_seq) / sizeof(key_t));
         const int nr_deletes = (int)(sizeof(delete_seq) / sizeof(key_t));
+        const int nr_get_bh = (int)(sizeof(get_bh_seq) / sizeof(key_t));
+
         for (int i = 0; i < nr_inserts; i++) {
                 TEST_ASSERT_EQUAL(0, rb_tree_insert(tree, insert_seq[i], NULL));
                 TEST_ASSERT_EQUAL(insert_bh[i], tree->bh);
         }
+
+        for (int i = 0; i < nr_get_bh; i++) {
+                TEST_ASSERT_EQUAL(get_bh[i],
+                                  rb_tree_get_bh(tree, get_bh_seq[i]));
+        }
+
+        TEST_ASSERT_EQUAL(RB_INVALID_BLACK_HEIGHT, rb_tree_get_bh(tree, 55));
 
         for (int i = 0; i < nr_deletes; i++) {
                 TEST_ASSERT_EQUAL(0, rb_tree_delete(tree, delete_seq[i]));

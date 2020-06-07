@@ -25,6 +25,14 @@
 typedef uint64_t key_t;
 #endif
 
+#define RB_NODE_NIL_KEY_VALUE ((key_t)(-1))
+#define RB_INIT_REF_COUNT (1)
+#define RB_INVALID_BLACK_HEIGHT (-1)
+
+#if (RB_INIT_REF_COUNT != 1)
+#pragma GCC warning "Change RB_INIT_REF_COUNT may occur deallocation fail"
+#endif
+
 #ifndef pr_info
 #define pr_info(msg, ...)                                                      \
         fprintf(stderr, "[{%lfs} %s(%s):%d] " msg,                             \
@@ -49,6 +57,7 @@ enum rb_node_color {
  */
 struct rb_node {
         enum rb_node_color color;
+        size_t ref_cnt; /**< reference count of node */
 
         key_t key;
         void *data; /**< must be allocated in HEAP location */
@@ -68,30 +77,19 @@ struct rb_tree {
 };
 
 struct rb_tree *rb_tree_alloc(void);
+struct rb_node *rb_tree_search(struct rb_tree *tree, key_t key);
+size_t rb_tree_get_bh(struct rb_tree *tree, key_t key);
 int rb_tree_insert(struct rb_tree *tree, const key_t key, void *data);
 struct rb_node *rb_tree_minimum(struct rb_tree *tree, struct rb_node *root);
 struct rb_node *rb_tree_maximum(struct rb_tree *tree, struct rb_node *root);
 struct rb_node *rb_tree_successor(struct rb_tree *tree, struct rb_node *x);
 struct rb_node *rb_tree_predecessor(struct rb_tree *tree, struct rb_node *y);
-struct rb_node *rb_tree_search(struct rb_tree *tree, key_t key);
 int rb_tree_delete(struct rb_tree *tree, key_t key);
 void rb_tree_dealloc(struct rb_tree *tree);
 
 #ifdef RB_TREE_DEBUG
 void rb_tree_dump(struct rb_tree *tree, struct rb_node *root, size_t indent);
 #endif
-
-/**
- * @brief Red-black tree color test
- * 
- * @param node color test target node
- * @return true node color is black
- * @return false node color is not black
- */
-static inline int rb_node_is_black(struct rb_node *node)
-{
-        return node->color == RB_NODE_COLOR_BLACK;
-}
 
 /**
  * @brief Node check if the node is equal to tree->nil
@@ -107,16 +105,23 @@ static inline int rb_node_is_leaf(struct rb_tree *tree, struct rb_node *node)
 }
 
 /**
- * @brief Set specific node to nil
+ * @brief Decrease the reference counter
  * 
- * @param nil the node which wants to make a nil.
+ * @param node decrease target node
  */
-static inline void rb_set_nil_leaf_node(struct rb_node *nil)
+static inline void rb_detach_node(struct rb_node *node)
 {
-        nil->color = RB_NODE_COLOR_BLACK;
-        nil->parent = nil->left = nil->right = NULL;
-        nil->data = NULL;
-        nil->key = -1;
+        node->ref_cnt--;
+}
+
+/**
+ * @brief Increase the reference counter
+ * 
+ * @param node increase target node
+ */
+static inline void rb_attach_node(struct rb_node *node)
+{
+        node->ref_cnt++;
 }
 
 /**
@@ -133,7 +138,13 @@ static inline struct rb_node *rb_node_alloc(const key_t key)
                 pr_info("Memory allocation failed\n");
                 return NULL;
         }
+        new_node->color = RB_NODE_COLOR_BLACK;
+        new_node->parent = new_node->left = new_node->right = NULL;
+        new_node->data = NULL;
+        new_node->ref_cnt = RB_INIT_REF_COUNT;
+
         new_node->key = key;
+
         return new_node;
 }
 
@@ -141,13 +152,17 @@ static inline struct rb_node *rb_node_alloc(const key_t key)
  * @brief Deallocation node
  * 
  * @param node deallocate target
+ * @warning If reference counter is over 0 then node cannot be deallocated by system.
  */
 static inline void rb_node_dealloc(struct rb_node *node)
 {
-        if (node->data) {
-                free(node->data);
+        rb_detach_node(node);
+        if (node->ref_cnt <= 0) {
+                if (node->data) {
+                        free(node->data);
+                }
+                free(node);
         }
-        free(node);
 }
 
 /**
