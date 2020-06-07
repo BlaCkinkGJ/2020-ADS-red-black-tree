@@ -12,6 +12,16 @@
 #include <stdlib.h>
 #include "rb-tree.h"
 
+static struct rb_global_info rb_info = {
+        .nil = { .color = RB_NODE_COLOR_BLACK,
+                 .key = RB_NODE_NIL_KEY_VALUE,
+                 .left = NULL,
+                 .right = NULL,
+                 .parent = NULL, 
+                 .data = NULL,
+        },
+}; /**< global red-black information */
+
 /**
  * @brief Allocation of red-black tree
  * 
@@ -25,14 +35,7 @@ struct rb_tree *rb_tree_alloc(void)
                 goto exception;
         }
 
-        tree->root = NULL;
-
-        tree->nil = rb_node_alloc(RB_NODE_NIL_KEY_VALUE);
-        if (!tree->nil) {
-                pr_info("Memory shortage detected! Allocation failed...");
-                goto exception;
-        }
-
+        tree->nil = &rb_info.nil;
         tree->root = tree->nil;
         tree->bh = 0;
 
@@ -629,7 +632,6 @@ void rb_tree_dealloc(struct rb_tree *tree)
         __rb_tree_dealloc(tree, tree->root);
         tree->root = NULL;
 
-        rb_node_dealloc(tree->nil);
         tree->nil = NULL;
 
         free(tree);

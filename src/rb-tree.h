@@ -26,12 +26,7 @@ typedef uint64_t key_t;
 #endif
 
 #define RB_NODE_NIL_KEY_VALUE ((key_t)(-1))
-#define RB_INIT_REF_COUNT (1)
 #define RB_INVALID_BLACK_HEIGHT (-1)
-
-#if (RB_INIT_REF_COUNT != 1)
-#pragma GCC warning "Change RB_INIT_REF_COUNT may occur deallocation fail"
-#endif
 
 #ifndef pr_info
 #define pr_info(msg, ...)                                                      \
@@ -49,6 +44,7 @@ typedef uint64_t key_t;
 enum rb_node_color {
         RB_NODE_COLOR_RED,
         RB_NODE_COLOR_BLACK,
+        RB_NODE_COLOR_UNDEFINED,
 };
 
 /**
@@ -57,13 +53,16 @@ enum rb_node_color {
  */
 struct rb_node {
         enum rb_node_color color;
-        size_t ref_cnt; /**< reference count of node */
 
         key_t key;
         void *data; /**< must be allocated in HEAP location */
 
         struct rb_node *left, *right;
         struct rb_node *parent; /**< same as P in CLRS books */
+};
+
+struct rb_global_info {
+        struct rb_node nil;
 };
 
 /**
@@ -105,26 +104,6 @@ static inline int rb_node_is_leaf(struct rb_tree *tree, struct rb_node *node)
 }
 
 /**
- * @brief Decrease the reference counter
- * 
- * @param node decrease target node
- */
-static inline void rb_detach_node(struct rb_node *node)
-{
-        node->ref_cnt--;
-}
-
-/**
- * @brief Increase the reference counter
- * 
- * @param node increase target node
- */
-static inline void rb_attach_node(struct rb_node *node)
-{
-        node->ref_cnt++;
-}
-
-/**
  * @brief Generate new node
  * 
  * @param key node's key
@@ -138,10 +117,9 @@ static inline struct rb_node *rb_node_alloc(const key_t key)
                 pr_info("Memory allocation failed\n");
                 return NULL;
         }
-        new_node->color = RB_NODE_COLOR_BLACK;
+        new_node->color = RB_NODE_COLOR_UNDEFINED;
         new_node->parent = new_node->left = new_node->right = NULL;
         new_node->data = NULL;
-        new_node->ref_cnt = RB_INIT_REF_COUNT;
 
         new_node->key = key;
 
@@ -156,13 +134,10 @@ static inline struct rb_node *rb_node_alloc(const key_t key)
  */
 static inline void rb_node_dealloc(struct rb_node *node)
 {
-        rb_detach_node(node);
-        if (node->ref_cnt <= 0) {
-                if (node->data) {
-                        free(node->data);
-                }
-                free(node);
+        if (node->data) {
+                free(node->data);
         }
+        free(node);
 }
 
 /**
